@@ -1,4 +1,5 @@
 import { IntelligenceAgent } from '@copilotkit/core';
+import { HttpAgent } from '@ag-ui/client';
 import type { Message } from '@ag-ui/core';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
@@ -29,28 +30,42 @@ export async function runThreadTurn(
   prompt: string,
   signal: AbortSignal,
   metadata?: Record<string, unknown>,
+  /** Local (SQLite) mode: prior thread messages; the run goes over plain HTTP/SSE. */
+  localHistory?: Message[],
 ): Promise<string> {
   signal.throwIfAborted();
-  const response = await fetch(`${runtimeUrl}/info`, { headers, signal });
-  if (!response.ok)
-    throw new Error(`Intelligence runtime returned HTTP ${response.status}.`);
-  const info = runtimeInfoSchema.parse(await response.json());
-  if (!Object.hasOwn(info.agents, dotId))
-    throw new Error('The selected Dot is unavailable in the runtime.');
-  // Core's runtime discovery is browser-only. Use the SDK's Node-compatible
-  // Intelligence agent for voice compute and scheduled server turns.
-  const agent = new IntelligenceAgent({
-    url: info.intelligence.wsUrl,
-    runtimeUrl,
-    agentId: dotId,
-    headers,
-    fetch: (input, init) =>
-      fetch(input, {
-        ...init,
-        signal: init?.signal ? AbortSignal.any([signal, init.signal]) : signal,
-      }),
-  });
-  agent.threadId = threadId;
+  const scopedFetch: typeof fetch = (input, init) =>
+    fetch(input, {
+      ...init,
+      signal: init?.signal ? AbortSignal.any([signal, init.signal]) : signal,
+    });
+  let agent: IntelligenceAgent | HttpAgent;
+  if (localHistory) {
+    agent = new HttpAgent({
+      url: `${runtimeUrl}/agent/${encodeURIComponent(dotId)}/run`,
+      agentId: dotId,
+      headers,
+      threadId,
+      initialMessages: localHistory,
+    });
+  } else {
+    const response = await fetch(`${runtimeUrl}/info`, { headers, signal });
+    if (!response.ok)
+      throw new Error(`Intelligence runtime returned HTTP ${response.status}.`);
+    const info = runtimeInfoSchema.parse(await response.json());
+    if (!Object.hasOwn(info.agents, dotId))
+      throw new Error('The selected Dot is unavailable in the runtime.');
+    // Core's runtime discovery is browser-only. Use the SDK's Node-compatible
+    // Intelligence agent for voice compute and scheduled server turns.
+    agent = new IntelligenceAgent({
+      url: info.intelligence.wsUrl,
+      runtimeUrl,
+      agentId: dotId,
+      headers,
+      fetch: scopedFetch,
+    });
+    agent.threadId = threadId;
+  }
   let runError: Error | undefined;
   const subscription = agent.subscribe({
     onRunErrorEvent: ({ event }) => {
@@ -79,6 +94,6 @@ export async function runThreadTurn(
   } finally {
     signal.removeEventListener('abort', stop);
     subscription.unsubscribe();
-    await agent.detachActiveRun();
+    if (agent instanceof IntelligenceAgent) await agent.detachActiveRun();
   }
 }

@@ -46,7 +46,8 @@ it('reports setup honestly without a standalone agent fallback', () => {
   expect(status.intelligence).toBe(false);
   expect(status.voice).toBe(false);
   expect(status.slack).toBe('not_configured');
-  expect(status.missing).toContain(INTELLIGENCE_KEY_MISSING_LABEL);
+  expect(status.missing).not.toContain(INTELLIGENCE_KEY_MISSING_LABEL);
+  expect(status.missing).toEqual(['OPENAI_API_KEY', 'OPENAI_MODEL']);
 });
 it('rejects stop scope bypasses and misleading prefixes while allowing canonical owned routes', () => {
   const store = new WorkspaceStore(':memory:', 'owner');

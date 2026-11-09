@@ -8,10 +8,13 @@
   },
   "scripts": {
     "dev": "concurrently -k \"cross-env NODE_ENV=development node --env-file-if-exists=.env --import tsx --watch src/server/index.ts\" \"vite\"",
+    "dev:cli": "concurrently -k \"npm:dev\" \"npm:bridge\"",
     "build": "vite build && tsc -p tsconfig.server.json",
     "start": "node --env-file-if-exists=.env dist/server/server/index.js",
     "browser": "node --env-file-if-exists=.env --import tsx src/browser/index.ts",
     "browser:start": "node --env-file-if-exists=.env dist/server/browser/index.js",
+    "bridge": "node --env-file-if-exists=.env --import tsx --watch src/cli-bridge/index.ts",
+    "bridge:start": "node --env-file-if-exists=.env dist/server/cli-bridge/index.js",
     "test": "cross-env DO_NOT_TRACK=1 vitest run",
     "typecheck": "tsc --noEmit",
     "knip": "knip",

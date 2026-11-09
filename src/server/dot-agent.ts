@@ -117,18 +117,14 @@ export class DotAgent extends AbstractAgent {
           input.threadId,
           dot.id,
         );
-        if (
-          !this.config.intelligenceKey ||
-          !this.config.apiKey ||
-          !this.config.model
-        ) {
+        if (!this.config.apiKey || !this.config.model) {
           configurationFailure = true;
           this.setupTelemetry?.capture({
             kind: 'setup_failed',
             step: 'setup_required',
             error_class: 'configuration_missing',
           });
-          throw new Error('Intelligence and model configuration are required.');
+          throw new Error('Model configuration is required.');
         }
         const initialSettings = this.store.settings();
         const initialConnections = this.workspace.connections.fingerprint(

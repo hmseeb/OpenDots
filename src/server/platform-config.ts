@@ -72,6 +72,8 @@ export interface PlatformConfig extends WebConfig {
   slackUsers: string[];
   slackDotId?: string;
   runtimeUrl: string;
+  /** SQLite file for local threads when no Intelligence key is configured. */
+  databasePath?: string;
   ownerToken?: string;
 }
 export function setupStatus(
@@ -80,7 +82,6 @@ export function setupStatus(
   activationFailed = false,
 ): SetupStatus {
   const missing = [
-    !config.intelligenceKey && INTELLIGENCE_KEY_MISSING_LABEL,
     !config.apiKey && 'OPENAI_API_KEY',
     !config.model && 'OPENAI_MODEL',
   ].filter((item): item is string => !!item);
